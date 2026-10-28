@@ -9,7 +9,7 @@ import {
   useFocusTurnNavigation,
 } from "@tsmono/inspect-components/transcript";
 import { NoContentsPanel } from "@tsmono/react/components";
-import { navigateAndForget, useDocumentTitleText } from "@tsmono/react/hooks";
+import { useDocumentTitleText } from "@tsmono/react/hooks";
 
 import { useAppConfig } from "../../../app_config";
 import {
@@ -124,7 +124,7 @@ export const SampleEventView: FC = () => {
   }, [logPath, sampleId, epoch, resolvedEventId, builder, following]);
   const onExit = useCallback(() => {
     if (!exitUrl) return;
-    navigateAndForget(navigate, exitUrl);
+    navigate(exitUrl);
   }, [exitUrl, navigate]);
   const homeUrl = useMemo(() => {
     if (!logPath) return undefined;

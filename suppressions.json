@@ -23,10 +23,6 @@
     }
   },
   "apps/inspect/src/app/log-list/grid/LogListGrid.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1,
-      "undescribed": 1
-    },
     "tsmono/no-raw-use-effect": {
       "count": 2
     }
@@ -207,10 +203,6 @@
     }
   },
   "apps/inspect/src/app/samples/SampleDisplay.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1,
-      "undescribed": 1
-    },
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 1
     },
@@ -733,12 +725,6 @@
       "count": 1
     }
   },
-  "apps/scout/src/app/scannerResult/ScannerResultPanel.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1,
-      "undescribed": 1
-    }
-  },
   "apps/scout/src/app/scans/ScansGrid.tsx": {
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 1
@@ -794,12 +780,6 @@
   },
   "apps/scout/src/app/utils/refs.tsx": {
     "react-hooks/preserve-manual-memoization": {
-      "count": 1,
-      "undescribed": 1
-    }
-  },
-  "apps/scout/src/app/validation/components/ValidationCaseCard.tsx": {
-    "@typescript-eslint/no-floating-promises": {
       "count": 1,
       "undescribed": 1
     }
@@ -1262,12 +1242,6 @@
     },
     "tsmono/no-raw-use-effect": {
       "count": 1
-    }
-  },
-  "packages/react/src/components/MarkdownDivWithReferences.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1,
-      "undescribed": 1
     }
   },
   "packages/react/src/components/markdownRendering.ts": {
