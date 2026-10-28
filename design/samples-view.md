@@ -86,7 +86,15 @@ Per-log scoping means a logDir change doesn't reset SampleList state; each log k
 
 - **No filter.** The wire type has no filter field; an earlier DSL `filter` was removed in inspect_ai #4110 (tracked here in #272).
 - **No `id` field**, only `name`. Identity can be added if multi-view selection lands.
-- **Multi-view selection** is accepted on the wire (`TaskSamplesView | list[TaskSamplesView]`), but only the first entry is read. There is no UI for switching or saving views yet.
+- **Multi-view selection** is accepted on the wire (`TaskSamplesView | list[TaskSamplesView]`), but only the first entry is read. User-saved views (below) are separate from eval-author views.
+
+## Saved views
+
+Users can save the current samples list as a named preset from the View popover (`SamplesViewOptionsPopover`), like W&B saved views. A `SavedSampleView` ([`savedViews.ts`](../apps/inspect/src/app/samples/list/savedViews.ts)) holds the DSL filter, `columns`, `sort`, `multiline`, `compactScores` and the selected scores. Views are global rather than per log, so a view saved on one log of a task applies to its other logs.
+
+- **Storage**: `useSavedViews` ([`state/savedViews.ts`](../apps/inspect/src/state/savedViews.ts)) persists to `localStorage`, like `useUserSettings`, not the app store, whose persistence is host-transient. Entries are validated on rehydrate (`parseSavedViews`).
+- **Apply** (`applySavedView`): columns and sorts the current log lacks are dropped; columns the view doesn't mention keep their visibility and follow its columns. If none of the view's scores exist in the log, the score selection is left alone. Toggles are written with `userOverrides`, as the toggle setters do.
+- **Active view** (`isSavedViewActive`): the View button shows the name of the saved view the list matches, compared over the columns both have.
 
 ## Test coverage
 

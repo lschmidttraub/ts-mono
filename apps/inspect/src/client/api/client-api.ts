@@ -21,6 +21,7 @@ import {
   PendingSampleResponse,
   ProgressCallback,
   SampleDataResponse,
+  SampleRef,
   SampleSummary,
 } from "./types";
 
@@ -502,6 +503,20 @@ export const clientApi = (api: LogViewAPI, debug = false): ClientAPI => {
       ? middleware("download_log", (log_file: string) => {
           return api.download_log!(log_file);
         })
+      : undefined,
+    download_log_subset: api.download_log_subset
+      ? middleware(
+          "download_log_subset",
+          (log_file: string, samples: SampleRef[], file_name: string) =>
+            api.download_log_subset!(log_file, samples, file_name)
+        )
+      : undefined,
+    save_log_subset: api.save_log_subset
+      ? middleware(
+          "save_log_subset",
+          (log_file: string, samples: SampleRef[], file_name: string) =>
+            api.save_log_subset!(log_file, samples, file_name)
+        )
       : undefined,
     log_message: middleware(
       "log_message",

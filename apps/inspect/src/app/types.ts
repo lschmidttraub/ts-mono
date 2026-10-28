@@ -135,6 +135,18 @@ export interface LogState {
   scores?: ScoreLabel[];
 
   filteredSampleCount?: number;
+
+  sampleSelection?: SampleSelectionState;
+}
+
+/** Samples checked in the samples list, owned by one log (`logFile`):
+ *  reading it under any other log yields no selection, so opening another
+ *  log resets it without an effect. Keys are `sampleSelectionKey` values. */
+export interface SampleSelectionState {
+  logFile: string;
+  keys: string[];
+  /** Last row toggled on its own; the anchor for shift-click ranges. */
+  lastToggledKey?: string;
 }
 
 export type SampleStatus = "ok" | "loading" | "streaming" | "error";

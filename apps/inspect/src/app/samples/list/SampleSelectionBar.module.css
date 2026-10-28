@@ -1,0 +1,39 @@
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25em 0.75em;
+  padding: 0.3em 1em;
+  border-bottom: solid 1px var(--bs-light-border-subtle);
+  background-color: var(--bs-primary-bg-subtle);
+}
+
+.count {
+  font-weight: 600;
+}
+
+.saveForm {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.fileName {
+  width: 28em;
+  max-width: 60vw;
+  padding: 0.1em 0.4em;
+  font-size: inherit;
+}
+
+.error {
+  color: var(--bs-danger-text-emphasis);
+}
+
+.saved {
+  color: var(--bs-secondary-color);
+}
+
+.action {
+  font-size: inherit;
+  padding: 0.1rem 0.5rem;
+}

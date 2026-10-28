@@ -284,6 +284,19 @@ export interface LogViewAPI {
     update: LogUpdate,
     if_match_etag?: string
   ) => Promise<EditLogResult>;
+  // Copy some of a log's samples into a new .eval log, either downloaded
+  // as `file_name` or written beside the source log. Optional — only the
+  // view server implements them.
+  download_log_subset?: (
+    log_file: string,
+    samples: SampleRef[],
+    file_name: string
+  ) => Promise<void>;
+  save_log_subset?: (
+    log_file: string,
+    samples: SampleRef[],
+    file_name: string
+  ) => Promise<SaveLogSubsetResult>;
   // Best-effort identity of the user running the view server (git
   // user.name/user.email, falling back to the OS login). Used to prefill
   // the Author field on edit dialogs. Optional — not all backends.
@@ -317,6 +330,18 @@ export interface LogViewAPI {
 export interface EditLogResult {
   log: EvalLog;
   etag?: string;
+}
+
+export interface SampleRef {
+  id: string | number;
+  epoch: number;
+}
+
+export interface SaveLogSubsetResult {
+  log_file: string;
+  // False when the server couldn't rebuild the log's metrics (e.g. a custom
+  // metric it can't import); the new log then has no aggregate results.
+  metrics_recomputed: boolean;
 }
 
 export interface UserInfo {
@@ -403,6 +428,16 @@ export interface ClientAPI {
     update: LogUpdate,
     if_match_etag?: string
   ) => Promise<EditLogResult>;
+  download_log_subset?: (
+    log_file: string,
+    samples: SampleRef[],
+    file_name: string
+  ) => Promise<void>;
+  save_log_subset?: (
+    log_file: string,
+    samples: SampleRef[],
+    file_name: string
+  ) => Promise<SaveLogSubsetResult>;
   // Best-effort identity for prefilling provenance.author on edits.
   get_user_info?: () => Promise<UserInfo>;
   // Installed inspect / scout versions, fetched once at startup to gate render.

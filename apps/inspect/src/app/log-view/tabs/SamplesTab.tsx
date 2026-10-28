@@ -22,8 +22,10 @@ import {
 } from "@tsmono/react/components";
 
 import { EvalLogStatus } from "../../../@types/extraInspect.ts";
+import { getApi } from "../../../app_config";
 import { InlineSampleDisplay } from "../../../app/samples/InlineSampleDisplay.tsx";
 import { SampleList } from "../../../app/samples/list/SampleList.tsx";
+import { sampleSelectColumn } from "../../../app/samples/list/SampleSelectColumn.tsx";
 import { parseFilterSpecs } from "../../../app/samples/sample-tools/astToSpecs.ts";
 import { buildSampleFilterSpecRegistry } from "../../../app/samples/sample-tools/filterSpecRegistry.ts";
 import { specsToFilterText } from "../../../app/samples/sample-tools/specsToFilterText.ts";
@@ -347,18 +349,27 @@ export const SamplesTab: FC<SamplesTabProps> = ({
   // `task_samples_view` (the AG grid did this via `initialState`). Columns are
   // reordered to follow `view.columns`; any not listed keep their builder
   // order at the end. Default sort seeds the grid from `view.sort`.
+  // The checkbox column stays out of `allColumns` so the column picker and
+  // the persisted view never see it.
+  const api = getApi();
+  const canExportSamples =
+    api.download_log_subset !== undefined || api.save_log_subset !== undefined;
   const orderedColumns = useMemo<ExtendedColumnDef<SampleRow>[]>(() => {
-    if (view.columns.length === 0) return allColumns;
+    const selectColumns = canExportSamples ? [sampleSelectColumn] : [];
+    if (view.columns.length === 0) return [...selectColumns, ...allColumns];
     const orderIndex = new Map(view.columns.map((c, i) => [c.id, i]));
     const rankOf = (col: ExtendedColumnDef<SampleRow>) => {
       const i = col.id !== undefined ? orderIndex.get(col.id) : undefined;
       return i ?? Number.MAX_SAFE_INTEGER;
     };
-    return allColumns
-      .map((col, i) => ({ col, i }))
-      .sort((a, b) => rankOf(a.col) - rankOf(b.col) || a.i - b.i)
-      .map((x) => x.col);
-  }, [allColumns, view.columns]);
+    return [
+      ...selectColumns,
+      ...allColumns
+        .map((col, i) => ({ col, i }))
+        .sort((a, b) => rankOf(a.col) - rankOf(b.col) || a.i - b.i)
+        .map((x) => x.col),
+    ];
+  }, [allColumns, view.columns, canExportSamples]);
 
   // Controlled sort/widths, persisted per log in the samples-view descriptor
   // so they survive the grid unmounting (opening a sample, switching tabs).
@@ -508,6 +519,7 @@ export const SamplesTab: FC<SamplesTabProps> = ({
           columnFilters={columnFilterSpecs ?? kNoColumnFilters}
           onColumnFilterChange={handleColumnFilterChange}
           hideColumnFilters={columnFilterSpecs === null}
+          selectableSamples={canExportSamples ? summariesState.data : undefined}
         />
       ) : null}
       {listDisplay ? (

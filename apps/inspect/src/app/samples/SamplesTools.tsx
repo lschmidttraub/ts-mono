@@ -5,23 +5,26 @@ import { useStore } from "../../state/store";
 import { NavbarButton } from "../navbar/NavbarButton";
 
 import { SamplesViewOptionsPopover } from "./list/SamplesViewOptionsPopover";
+import { useSavedSampleViews } from "./list/useSavedSampleViews";
 import { SampleFilter } from "./sample-tools/sample-filter/SampleFilter";
 import { SelectScorer } from "./sample-tools/SelectScorer";
 
-// Multi-sample tools: DSL filter + a single "View" dropdown grouping the
-// presentation toggles (multiline, compact scores, colour scales). Scorer
-// selection is handled by the column-chooser popover in `SamplesTab`.
+// Multi-sample tools: DSL filter + a single "View" dropdown grouping saved
+// views and the presentation toggles (multiline, compact scores, colour
+// scales). Scorer selection is handled by the column-chooser popover in
+// `SamplesTab`.
 export const SampleTools: FC = () => {
   const [showViewOptions, setShowViewOptions] = useState(false);
   const [viewButtonEl, setViewButtonEl] = useState<HTMLButtonElement | null>(
     null
   );
+  const { activeView } = useSavedSampleViews();
   return (
     <Fragment>
       <SampleFilter />
       <NavbarButton
         ref={setViewButtonEl}
-        label="View"
+        label={activeView ? `View: ${activeView.name}` : "View"}
         icon="options"
         dropdown
         subtle

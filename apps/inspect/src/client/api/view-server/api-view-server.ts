@@ -31,6 +31,8 @@ import {
   PendingSampleUrls,
   SampleData,
   SampleDataResponse,
+  SampleRef,
+  SaveLogSubsetResult,
   SearchResultScope,
   UserInfo,
 } from "../types";
@@ -83,6 +85,16 @@ const transportRequestApi = (transport: ViewServerTransport) =>
 const asResponse = <T>(parsed: unknown): T =>
   // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- API boundary (#555): see above
   parsed as T;
+
+const isCrossOriginApi = (apiBaseUrl: string | undefined): boolean => {
+  try {
+    return Boolean(
+      apiBaseUrl && new URL(apiBaseUrl).origin !== window.location.origin
+    );
+  } catch {
+    return false;
+  }
+};
 
 export async function fetchViewServerLogRoot(
   transport: ViewServerTransport = {},
@@ -626,6 +638,59 @@ export function viewServerApi(
     }
   };
 
+  // Direct fetch (as in `edit_log`) so a FastAPI `{"detail": ...}` error
+  // surfaces as its message and a binary body stays readable as a Blob.
+  const post_json = async (path: string, body: unknown): Promise<Response> => {
+    const baseUrl = apiBaseUrl || __VIEW_SERVER_API_URL__;
+    const url = baseUrl ? `${baseUrl.replace(/\/$/, "")}${path}` : path;
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (headerProvider) {
+      Object.assign(headers, await headerProvider());
+    }
+    headers[VIEW_REQUEST_HEADER] = VIEW_REQUEST_HEADER_VALUE;
+
+    const response = await (customFetch ?? fetch)(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      credentials: isCrossOriginApi(apiBaseUrl) ? "include" : "same-origin",
+    });
+    if (!response.ok) {
+      const message =
+        unwrapFastapiDetail(await response.text()) || response.statusText;
+      throw new ApiError(response.status, message);
+    }
+    return response;
+  };
+
+  const download_log_subset = async (
+    log_file: string,
+    samples: SampleRef[],
+    file_name: string
+  ): Promise<void> => {
+    const response = await post_json(
+      `/log-subset-download/${encodeURIComponent(log_file)}`,
+      { samples }
+    );
+    await download_file(file_name, await response.blob());
+  };
+
+  const save_log_subset = async (
+    log_file: string,
+    samples: SampleRef[],
+    file_name: string
+  ): Promise<SaveLogSubsetResult> => {
+    const response = await post_json(
+      `/log-subset-save/${encodeURIComponent(log_file)}`,
+      { samples, file_name }
+    );
+    return asResponse<SaveLogSubsetResult>(
+      await asyncJsonParse(await response.text())
+    );
+  };
+
   const download_log = (log_file: string): Promise<void> => {
     const baseUrl = apiBaseUrl || __VIEW_SERVER_API_URL__;
     const url = `${baseUrl}/log-download/${encodeURIComponent(log_file)}`;
@@ -656,6 +721,8 @@ export function viewServerApi(
     eval_log_sample_data,
     eval_log_sample_data_direct,
     edit_log,
+    download_log_subset,
+    save_log_subset,
     get_user_info,
     get_app_config,
     list_searches,

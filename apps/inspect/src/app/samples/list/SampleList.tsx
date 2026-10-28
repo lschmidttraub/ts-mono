@@ -27,6 +27,7 @@ import { SampleRow } from "../../shared/samples-grid/types";
 
 import { SampleFooter } from "./SampleFooter";
 import styles from "./SampleList.module.css";
+import { SampleSelectionBar } from "./SampleSelectionBar";
 
 interface SampleListProps {
   items: SampleRow[];
@@ -58,6 +59,9 @@ interface SampleListProps {
   ) => void;
   /** Forwarded to the grid (hides all funnels). */
   hideColumnFilters?: boolean;
+  /** Every sample in the log, when samples can be checked for export (the
+   *  grid then carries the checkbox column); shows the selection bar. */
+  selectableSamples?: readonly { id: string | number; epoch: number }[];
 }
 
 const makeSampleRowId = (id: string | number, epoch: number) =>
@@ -80,6 +84,7 @@ export const SampleList: FC<SampleListProps> = memo((props) => {
     columnFilters,
     onColumnFilterChange,
     hideColumnFilters,
+    selectableSamples,
   } = props;
 
   const sampleNavigation = useSampleNavigationActions();
@@ -184,6 +189,9 @@ export const SampleList: FC<SampleListProps> = memo((props) => {
           key={`sample-warning-message-${warning.type}-${warning.msg}`}
         />
       ))}
+      {selectableSamples && logFile && (
+        <SampleSelectionBar logFile={logFile} samples={selectableSamples} />
+      )}
       <SamplesGrid
         rowData={items}
         columnDefs={columns}

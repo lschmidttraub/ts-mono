@@ -1,7 +1,12 @@
 import { isRecord } from "@tsmono/util";
 
 import { sampleHandlesEqual } from "../app/shared/sample";
-import { FilterError, LogState, ScoreLabel } from "../app/types";
+import {
+  FilterError,
+  LogState,
+  SampleSelectionState,
+  ScoreLabel,
+} from "../app/types";
 
 import { StoreState } from "./store";
 
@@ -37,6 +42,9 @@ export interface LogSlice {
 
     setFilteredSampleCount: (count: number) => void;
     clearFilteredSampleCount: () => void;
+
+    setSampleSelection: (selection: SampleSelectionState) => void;
+    clearSampleSelection: () => void;
   };
 }
 
@@ -126,6 +134,16 @@ export const createLogSlice = (
       clearFilteredSampleCount: () => {
         set((state) => {
           state.log.filteredSampleCount = undefined;
+        });
+      },
+      setSampleSelection: (selection: SampleSelectionState) => {
+        set((state) => {
+          state.log.sampleSelection = selection;
+        });
+      },
+      clearSampleSelection: () => {
+        set((state) => {
+          state.log.sampleSelection = undefined;
         });
       },
     },
