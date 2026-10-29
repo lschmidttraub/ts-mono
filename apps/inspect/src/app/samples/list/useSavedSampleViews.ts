@@ -1,6 +1,15 @@
+import { useAsyncDataFromQuery } from "@tsmono/react/hooks";
+import { dirname } from "@tsmono/util";
+
+import { useAppConfig } from "../../../app_config";
 import { useScores, useSelectedScores } from "../../../state/hooks";
-import { useSavedViews } from "../../../state/savedViews";
+import {
+  openSavedViewsFolder,
+  SavedViewsServer,
+  useSavedViews,
+} from "../../../state/savedViews";
 import { useStore } from "../../../state/store";
+import { useCurrentLogFile } from "../../routing/currentSelection";
 
 import {
   applySavedView,
@@ -10,8 +19,16 @@ import {
 } from "./savedViews";
 import { useSamplesView } from "./useSamplesView";
 
+const kNoViews: SavedSampleView[] = [];
+
 export interface UseSavedSampleViewsResult {
+  /** The views of the folder holding the current log. */
   views: SavedSampleView[];
+  /** The folder the views belong to. */
+  folder: string;
+  /** The view server's file holding the views; undefined when they are
+   *  kept in this browser only. */
+  serverPath: string | undefined;
   /** The saved view the list currently matches, if any. */
   activeView: SavedSampleView | undefined;
   /** Save the current filter, columns, sort and layout as `name`,
@@ -35,18 +52,43 @@ export function useSavedSampleViews(): UseSavedSampleViewsResult {
   );
   const selectedScores = useSelectedScores();
   const availableScores = useScores();
-  const views = useSavedViews((state) => state.views);
+  const logFile = useCurrentLogFile();
+  const folder = logFile ? dirname(logFile) : "";
+  const views = useSavedViews(
+    (state) => state.viewsByFolder[folder] ?? kNoViews
+  );
   const saveView = useSavedViews((state) => state.saveView);
   const deleteView = useSavedViews((state) => state.deleteView);
   const renameView = useSavedViews((state) => state.renameView);
+  const serverPath = useSavedViews((state) => state.serverPath);
+
+  // Load each folder's views once per page (from the view server when it
+  // keeps them); the store holds the result.
+  const { api } = useAppConfig();
+  const getViews = api.get_saved_views;
+  const putViews = api.put_saved_views;
+  const server: SavedViewsServer | undefined =
+    getViews && putViews ? { get: getViews, put: putViews } : undefined;
+  useAsyncDataFromQuery({
+    queryKey: ["saved-views-folder", folder],
+    queryFn: () => openSavedViewsFolder(folder, server),
+    staleTime: Infinity,
+    gcTime: Infinity,
+    retry: false,
+  });
 
   const snapshot = { filter, view, selectedScores };
   return {
     views,
+    folder,
+    serverPath,
     activeView: views.find((v) => isSavedViewActive(v, snapshot)),
-    saveCurrent: (name) => saveView(captureSavedView(name, snapshot)),
+    saveCurrent: (name) => saveView(folder, captureSavedView(name, snapshot)),
     saveWithFilter: (name, nextFilter) => {
-      saveView(captureSavedView(name, { ...snapshot, filter: nextFilter }));
+      saveView(
+        folder,
+        captureSavedView(name, { ...snapshot, filter: nextFilter })
+      );
       setFilter(nextFilter);
     },
     apply: (saved) => {
@@ -55,7 +97,7 @@ export function useSavedSampleViews(): UseSavedSampleViewsResult {
       setFilter(applied.filter);
       if (applied.selectedScores) setSelectedScores(applied.selectedScores);
     },
-    remove: deleteView,
-    rename: renameView,
+    remove: (name) => deleteView(folder, name),
+    rename: (from, to) => renameView(folder, from, to),
   };
 }

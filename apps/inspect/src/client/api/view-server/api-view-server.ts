@@ -691,6 +691,24 @@ export function viewServerApi(
     );
   };
 
+  const savedViewsPath = (folder: string) =>
+    `/saved-views?folder=${encodeURIComponent(folder)}`;
+
+  const get_saved_views = async (folder: string): Promise<unknown> =>
+    (await requestApi.fetchString("GET", savedViewsPath(folder))).parsed;
+
+  const put_saved_views = async (
+    folder: string,
+    views: readonly object[]
+  ): Promise<void> => {
+    await requestApi.fetchString(
+      "PUT",
+      savedViewsPath(folder),
+      {},
+      JSON.stringify({ views })
+    );
+  };
+
   const download_log = (log_file: string): Promise<void> => {
     const baseUrl = apiBaseUrl || __VIEW_SERVER_API_URL__;
     const url = `${baseUrl}/log-download/${encodeURIComponent(log_file)}`;
@@ -723,6 +741,8 @@ export function viewServerApi(
     edit_log,
     download_log_subset,
     save_log_subset,
+    get_saved_views,
+    put_saved_views,
     get_user_info,
     get_app_config,
     list_searches,

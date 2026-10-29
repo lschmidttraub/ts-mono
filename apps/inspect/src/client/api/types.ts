@@ -297,6 +297,12 @@ export interface LogViewAPI {
     samples: SampleRef[],
     file_name: string
   ) => Promise<SaveLogSubsetResult>;
+  // The view server's saved samples-list views for a log folder (kept in a
+  // file so they outlast restarts and browser storage). Responses are
+  // untrusted JSON for the caller to validate. Optional — only the
+  // `inspect view` server.
+  get_saved_views?: (folder: string) => Promise<unknown>;
+  put_saved_views?: (folder: string, views: readonly object[]) => Promise<void>;
   // Best-effort identity of the user running the view server (git
   // user.name/user.email, falling back to the OS login). Used to prefill
   // the Author field on edit dialogs. Optional — not all backends.
@@ -438,6 +444,8 @@ export interface ClientAPI {
     samples: SampleRef[],
     file_name: string
   ) => Promise<SaveLogSubsetResult>;
+  get_saved_views?: (folder: string) => Promise<unknown>;
+  put_saved_views?: (folder: string, views: readonly object[]) => Promise<void>;
   // Best-effort identity for prefilling provenance.author on edits.
   get_user_info?: () => Promise<UserInfo>;
   // Installed inspect / scout versions, fetched once at startup to gate render.

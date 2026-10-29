@@ -3,6 +3,7 @@ import { FC, FormEvent, KeyboardEvent, useState } from "react";
 
 import { PopOver } from "@tsmono/react/components";
 import { Icon } from "@tsmono/react/icons";
+import { basename } from "@tsmono/util";
 
 import styles from "./SamplesViewOptionsPopover.module.css";
 import { isAvailableViewName } from "./savedViews";
@@ -84,11 +85,26 @@ export const SamplesViewOptionsPopover: FC<SamplesViewOptionsPopoverProps> = ({
       offset={[0, 1]}
     >
       <div className={clsx(styles.container, "text-size-small")}>
-        <div className={styles.heading}>Saved views</div>
+        <div
+          className={styles.heading}
+          title={`Views for ${savedViews.folder || "this folder"}, ${
+            savedViews.serverPath
+              ? `kept by the view server in ${savedViews.serverPath}`
+              : "kept in this browser"
+          }`}
+        >
+          Saved views
+          {savedViews.folder && (
+            <span className={styles.headingFolder}>
+              {" "}
+              · {basename(savedViews.folder)}
+            </span>
+          )}
+        </div>
         {savedViews.views.length === 0 ? (
           <div className={styles.empty}>
             Save the current filter, columns, sort and layout to reuse them on
-            any log.
+            any log in this folder.
           </div>
         ) : (
           <ul className={styles.viewList} aria-label="Saved views">

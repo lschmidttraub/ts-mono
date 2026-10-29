@@ -178,6 +178,15 @@ export const renameSavedView = (
   return views.map((v) => (v.name === from ? { ...v, name: to.trim() } : v));
 };
 
+/** `primary`'s views, then those in `secondary` whose names it lacks. */
+export const mergeSavedViews = (
+  primary: readonly SavedSampleView[],
+  secondary: readonly SavedSampleView[]
+): SavedSampleView[] => {
+  const names = new Set(primary.map((v) => v.name));
+  return [...primary, ...secondary.filter((v) => !names.has(v.name))];
+};
+
 /** Insert `view`, replacing any view with the same name in place. */
 export const upsertSavedView = (
   views: readonly SavedSampleView[],

@@ -518,6 +518,18 @@ export const clientApi = (api: LogViewAPI, debug = false): ClientAPI => {
             api.save_log_subset!(log_file, samples, file_name)
         )
       : undefined,
+    get_saved_views: api.get_saved_views
+      ? middleware("get_saved_views", (folder: string) =>
+          api.get_saved_views!(folder)
+        )
+      : undefined,
+    put_saved_views: api.put_saved_views
+      ? middleware(
+          "put_saved_views",
+          (folder: string, views: readonly object[]) =>
+            api.put_saved_views!(folder, views)
+        )
+      : undefined,
     log_message: middleware(
       "log_message",
       (log_file: string, message: string) => {
