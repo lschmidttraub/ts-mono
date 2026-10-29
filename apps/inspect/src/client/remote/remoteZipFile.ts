@@ -9,6 +9,8 @@ export type { ProgressCallback };
 export interface CentralDirectoryEntry {
   filename: string;
   compressionMethod: number;
+  /** CRC-32 of the uncompressed data, as the central directory records it. */
+  crc32: number;
   compressedSize: number;
   uncompressedSize: number;
   fileOffset: number;
@@ -98,6 +100,9 @@ export const openRemoteZipFile = async (
     maxBytes?: number,
     onProgress?: ProgressCallback
   ) => Promise<Uint8Array>;
+  /** An entry's stored (still compressed) bytes, for copying it into
+   *  another archive without recompressing. */
+  readRawFile: (file: string, maxBytes?: number) => Promise<Uint8Array>;
 }> => {
   const length = contentLength ?? (await fetchSize(url));
   if (!Number.isSafeInteger(length) || length < 22) {
@@ -177,34 +182,42 @@ export const openRemoteZipFile = async (
     );
   }
 
+  const readPayload = async (
+    file: string,
+    maxBytes: number | undefined,
+    onProgress?: ProgressCallback
+  ): Promise<{ entry: CentralDirectoryEntry; payload: Uint8Array }> => {
+    const entry = centralDirectory.get(file);
+    if (!entry) throw new Error(`File not found: ${file}`);
+    validateSize(entry.uncompressedSize, file, maxBytes);
+    const minimumSize = 30 + entry.filenameLength + entry.compressedSize;
+    validateSize(minimumSize, file, maxBytes);
+    // Padding avoids a separate local-header request for typical archives,
+    // but may extend past EOF for small archives and must be clamped.
+    const estimatedSize = Math.min(
+      minimumSize + 256,
+      length - entry.fileOffset,
+      MAX_ZIP_READ_BYTES
+    );
+    let fileData = await read(entry.fileOffset, estimatedSize, onProgress);
+    const view = dataView(fileData);
+    const actualTotal =
+      30 +
+      view.getUint16(26, true) +
+      view.getUint16(28, true) +
+      entry.compressedSize;
+    validateRange(entry.fileOffset, actualTotal, length);
+    validateSize(actualTotal, file, maxBytes);
+    if (actualTotal > fileData.length) {
+      fileData = await read(entry.fileOffset, actualTotal);
+    }
+    return { entry, payload: parseZipFileEntry(file, fileData, entry) };
+  };
+
   return {
     centralDirectory,
     readFile: async (file, maxBytes, onProgress): Promise<Uint8Array> => {
-      const entry = centralDirectory.get(file);
-      if (!entry) throw new Error(`File not found: ${file}`);
-      validateSize(entry.uncompressedSize, file, maxBytes);
-      const minimumSize = 30 + entry.filenameLength + entry.compressedSize;
-      validateSize(minimumSize, file, maxBytes);
-      // Padding avoids a separate local-header request for typical archives,
-      // but may extend past EOF for small archives and must be clamped.
-      const estimatedSize = Math.min(
-        minimumSize + 256,
-        length - entry.fileOffset,
-        MAX_ZIP_READ_BYTES
-      );
-      let fileData = await read(entry.fileOffset, estimatedSize, onProgress);
-      const view = dataView(fileData);
-      const actualTotal =
-        30 +
-        view.getUint16(26, true) +
-        view.getUint16(28, true) +
-        entry.compressedSize;
-      validateRange(entry.fileOffset, actualTotal, length);
-      validateSize(actualTotal, file, maxBytes);
-      if (actualTotal > fileData.length) {
-        fileData = await read(entry.fileOffset, actualTotal);
-      }
-      const payload = parseZipFileEntry(file, fileData, entry);
+      const { entry, payload } = await readPayload(file, maxBytes, onProgress);
       return decompressData(
         payload,
         entry.compressionMethod,
@@ -212,6 +225,8 @@ export const openRemoteZipFile = async (
         file
       );
     },
+    readRawFile: async (file, maxBytes): Promise<Uint8Array> =>
+      (await readPayload(file, maxBytes)).payload,
   };
 };
 
@@ -375,6 +390,7 @@ function parseCentralDirectory(
     entries.set(filename, {
       filename,
       compressionMethod: view.getUint16(offset + 10, true),
+      crc32: view.getUint32(offset + 16, true),
       compressedSize,
       uncompressedSize,
       fileOffset,

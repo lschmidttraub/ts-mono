@@ -5,9 +5,16 @@ import {
 } from "@tsmono/inspect-common/types";
 import { fetchRange, isUri } from "@tsmono/util";
 
-import { fetchSize } from "../../remote/remoteZipFile";
+import { buildLogSubset } from "../../remote/logSubset";
+import { fetchSize, openRemoteZipFile } from "../../remote/remoteZipFile";
 import { download_file } from "../shared/api-shared";
-import { Capabilities, LogPreview, LogRoot, LogViewAPI } from "../types";
+import {
+  Capabilities,
+  LogPreview,
+  LogRoot,
+  LogViewAPI,
+  SampleRef,
+} from "../types";
 
 import {
   fetchJsonFile,
@@ -237,6 +244,24 @@ function staticHttpApiForLog(logInfo: {
     },
     get_app_config: () => Promise.resolve(app_config),
     download_file,
+    // No server to build the subset, so it is assembled in the browser from
+    // ranged reads of the log. Saving into the log dir needs a server.
+    download_log_subset: async (
+      log_file: string,
+      samples: SampleRef[],
+      file_name: string
+    ) => {
+      if (!log_file.endsWith(".eval")) {
+        throw new Error(
+          "Only .eval logs can be exported from a static log viewer."
+        );
+      }
+      const zip = await openRemoteZipFile(log_file);
+      await download_file(
+        file_name,
+        await buildLogSubset(zip, samples, log_file)
+      );
+    },
     open_log_file,
   };
 }
