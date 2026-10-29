@@ -1,7 +1,12 @@
 import JSON5 from "json5";
 
 import { AppConfig } from "@tsmono/inspect-common/types";
-import { dirname, getVscodeApi, kMethodHttpRequest } from "@tsmono/util";
+import {
+  allowLogFetchRedirects,
+  dirname,
+  getVscodeApi,
+  kMethodHttpRequest,
+} from "@tsmono/util";
 
 import { clientApi } from "../client/api/client-api";
 import staticHttpApi, {
@@ -28,6 +33,9 @@ interface LogDirContext {
   abs_log_dir?: string;
   inspect_version?: string;
   trust_content?: boolean | null;
+  /** Set by bundles for hosts that serve logs through redirects (Hugging
+   *  Face Spaces); their CSP limits where a redirect can go. */
+  allow_log_redirects?: boolean;
 }
 
 /** Transport facts knowable before any api instance exists — what the store
@@ -216,6 +224,7 @@ export const resolveBackend = (source: UrlLogSource): BackendBootstrap => {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (context !== null) {
       const data = JSON5.parse<LogDirContext>(context);
+      if (data.allow_log_redirects === true) allowLogFetchRedirects();
       if (data.log_dir || data.log_file) {
         const log_dir = data.log_dir || dirname(data.log_file ?? "");
         const app_config: AppConfig | undefined =
