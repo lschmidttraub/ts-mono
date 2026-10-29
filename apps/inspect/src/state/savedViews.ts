@@ -5,6 +5,7 @@ import { isRecord } from "@tsmono/util";
 
 import {
   parseSavedViews,
+  renameSavedView,
   SavedSampleView,
   upsertSavedView,
 } from "../app/samples/list/savedViews";
@@ -16,6 +17,7 @@ interface SavedViewsState {
   views: SavedSampleView[];
   saveView: (view: SavedSampleView) => void;
   deleteView: (name: string) => void;
+  renameView: (from: string, to: string) => void;
 }
 
 export const useSavedViews = create<SavedViewsState>()(
@@ -27,6 +29,9 @@ export const useSavedViews = create<SavedViewsState>()(
       },
       deleteView: (name: string) => {
         set((state) => ({ views: state.views.filter((v) => v.name !== name) }));
+      },
+      renameView: (from: string, to: string) => {
+        set((state) => ({ views: renameSavedView(state.views, from, to) }));
       },
     }),
     {

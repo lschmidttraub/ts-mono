@@ -153,6 +153,31 @@ const isSavedSampleView = (v: unknown): v is SavedSampleView =>
 export const parseSavedViews = (persisted: unknown): SavedSampleView[] =>
   Array.isArray(persisted) ? persisted.filter(isSavedSampleView) : [];
 
+/** Whether `name` can be given to the view now called `current` (or to a
+ *  new view): not blank and not used by another view. */
+export const isAvailableViewName = (
+  views: readonly SavedSampleView[],
+  name: string,
+  current?: string
+): boolean => {
+  const trimmed = name.trim();
+  return (
+    trimmed !== "" &&
+    !views.some((v) => v.name === trimmed && v.name !== current)
+  );
+};
+
+/** Rename the view `from` to `to` in place. Unchanged if `to` isn't an
+ *  available name. */
+export const renameSavedView = (
+  views: readonly SavedSampleView[],
+  from: string,
+  to: string
+): SavedSampleView[] => {
+  if (!isAvailableViewName(views, to, from)) return [...views];
+  return views.map((v) => (v.name === from ? { ...v, name: to.trim() } : v));
+};
+
 /** Insert `view`, replacing any view with the same name in place. */
 export const upsertSavedView = (
   views: readonly SavedSampleView[],

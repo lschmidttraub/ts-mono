@@ -22,6 +22,8 @@ export interface UseSavedSampleViewsResult {
   saveWithFilter: (name: string, filter: string) => void;
   apply: (view: SavedSampleView) => void;
   remove: (name: string) => void;
+  /** Rename a view; ignored if the new name is blank or taken. */
+  rename: (from: string, to: string) => void;
 }
 
 export function useSavedSampleViews(): UseSavedSampleViewsResult {
@@ -36,6 +38,7 @@ export function useSavedSampleViews(): UseSavedSampleViewsResult {
   const views = useSavedViews((state) => state.views);
   const saveView = useSavedViews((state) => state.saveView);
   const deleteView = useSavedViews((state) => state.deleteView);
+  const renameView = useSavedViews((state) => state.renameView);
 
   const snapshot = { filter, view, selectedScores };
   return {
@@ -53,5 +56,6 @@ export function useSavedSampleViews(): UseSavedSampleViewsResult {
       if (applied.selectedScores) setSelectedScores(applied.selectedScores);
     },
     remove: deleteView,
+    rename: renameView,
   };
 }

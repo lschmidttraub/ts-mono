@@ -8,8 +8,10 @@ import { defaultSamplesView, SamplesViewState } from "./samplesView";
 import {
   applySavedView,
   captureSavedView,
+  isAvailableViewName,
   isSavedViewActive,
   parseSavedViews,
+  renameSavedView,
   SamplesViewSnapshot,
   selectionFilter,
   upsertSavedView,
@@ -206,5 +208,25 @@ describe("selectionFilter", () => {
       ["b", 1],
       ["a", 2],
     ]);
+  });
+});
+
+describe("renameSavedView", () => {
+  const one = captureSavedView("one", snapshot);
+  const two = captureSavedView("two", snapshot);
+
+  test("renames in place, keeping the view's settings and position", () => {
+    expect(renameSavedView([one, two], "one", "  first ")).toEqual([
+      { ...one, name: "first" },
+      two,
+    ]);
+  });
+
+  test("refuses a blank name or one another view has", () => {
+    expect(renameSavedView([one, two], "one", "two")).toEqual([one, two]);
+    expect(renameSavedView([one, two], "one", "   ")).toEqual([one, two]);
+    expect(isAvailableViewName([one, two], "two", "one")).toBe(false);
+    // keeping its own name is allowed
+    expect(isAvailableViewName([one, two], "one", "one")).toBe(true);
   });
 });

@@ -1,15 +1,29 @@
 import clsx from "clsx";
-import { FC, FormEvent, useState } from "react";
+import { FC, FormEvent, KeyboardEvent, useState } from "react";
 
 import { PopOver } from "@tsmono/react/components";
 import { Icon } from "@tsmono/react/icons";
 
 import styles from "./SamplesViewOptionsPopover.module.css";
+import { isAvailableViewName } from "./savedViews";
 import {
   useSamplesView,
   useSamplesViewScoreColorScales,
 } from "./useSamplesView";
 import { useSavedSampleViews } from "./useSavedSampleViews";
+
+// Module-level so its identity is stable: an inline ref callback would re-run
+// on every keystroke and select the text being typed.
+const focusAndSelect = (el: HTMLInputElement | null) => {
+  if (!el) return;
+  el.focus();
+  el.select();
+};
+
+interface Renaming {
+  from: string;
+  name: string;
+}
 
 interface SamplesViewOptionsPopoverProps {
   showing: boolean;
@@ -30,6 +44,25 @@ export const SamplesViewOptionsPopover: FC<SamplesViewOptionsPopoverProps> = ({
   const [newViewName, setNewViewName] = useState("");
   const trimmedName = newViewName.trim();
   const replacing = savedViews.views.some((v) => v.name === trimmedName);
+  const [renaming, setRenaming] = useState<Renaming | undefined>(undefined);
+  const renameValid =
+    renaming !== undefined &&
+    isAvailableViewName(savedViews.views, renaming.name, renaming.from);
+
+  const handleRename = (e: FormEvent): void => {
+    e.preventDefault();
+    if (!renaming || !renameValid) return;
+    savedViews.rename(renaming.from, renaming.name);
+    setRenaming(undefined);
+  };
+
+  // Escape cancels the rename instead of closing the popover.
+  const handleRenameKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {
+    if (e.key !== "Escape") return;
+    e.preventDefault();
+    e.stopPropagation();
+    setRenaming(undefined);
+  };
 
   const handleSave = (e: FormEvent): void => {
     e.preventDefault();
@@ -61,6 +94,49 @@ export const SamplesViewOptionsPopover: FC<SamplesViewOptionsPopoverProps> = ({
           <ul className={styles.viewList} aria-label="Saved views">
             {savedViews.views.map((saved) => {
               const active = saved === savedViews.activeView;
+              if (renaming?.from === saved.name) {
+                return (
+                  <li key={saved.name} className={styles.viewRow}>
+                    <form className={styles.renameForm} onSubmit={handleRename}>
+                      <input
+                        type="text"
+                        className={clsx("form-control", styles.nameInput)}
+                        aria-label={`New name for ${saved.name}`}
+                        aria-invalid={!renameValid}
+                        title={
+                          renameValid
+                            ? undefined
+                            : "Another view already has this name"
+                        }
+                        value={renaming.name}
+                        onChange={(e) =>
+                          setRenaming({ ...renaming, name: e.target.value })
+                        }
+                        onKeyDown={handleRenameKeyDown}
+                        ref={focusAndSelect}
+                      />
+                      <button
+                        type="submit"
+                        className={styles.iconButton}
+                        aria-label="Save name"
+                        title="Save name"
+                        disabled={!renameValid}
+                      >
+                        <Icon name="confirm" />
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.iconButton}
+                        aria-label="Cancel rename"
+                        title="Cancel"
+                        onClick={() => setRenaming(undefined)}
+                      >
+                        <Icon name="close" />
+                      </button>
+                    </form>
+                  </li>
+                );
+              }
               return (
                 <li
                   key={saved.name}
@@ -83,6 +159,17 @@ export const SamplesViewOptionsPopover: FC<SamplesViewOptionsPopoverProps> = ({
                     {saved.filter && (
                       <span className={styles.viewFilter}>{saved.filter}</span>
                     )}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.iconButton}
+                    title={`Rename "${saved.name}"`}
+                    aria-label={`Rename ${saved.name}`}
+                    onClick={() =>
+                      setRenaming({ from: saved.name, name: saved.name })
+                    }
+                  >
+                    <Icon name="edit" />
                   </button>
                   <button
                     type="button"
