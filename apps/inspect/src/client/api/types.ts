@@ -224,9 +224,12 @@ export interface LogViewAPI {
   client_events: () => Promise<string[]>;
   get_eval_set: (dir?: string) => Promise<EvalSet | undefined>;
   get_flow: (dir?: string) => Promise<string | undefined>;
+  // `clientNames` (the names in the caller's listing) lets the server notice
+  // logs that moved or were renamed, which keep the file count and mtimes.
   get_logs: (
     mtime: number,
-    clientFileCount: number
+    clientFileCount: number,
+    clientNames?: readonly string[]
   ) => Promise<LogFilesResponse>;
   get_log_contents: (
     log_file: string,
@@ -365,9 +368,12 @@ export interface UserInfo {
  */
 export interface ClientAPI {
   // List of files
+  // `clientNames` (the names in the caller's listing) lets the server notice
+  // logs that moved or were renamed, which keep the file count and mtimes.
   get_logs: (
     mtime: number,
-    clientFileCount: number
+    clientFileCount: number,
+    clientNames?: readonly string[]
   ) => Promise<LogFilesResponse>;
 
   // Read eval set

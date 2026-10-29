@@ -63,8 +63,13 @@ export const syncListing = async (
     });
   }
 
-  // Fetch the updated list of logs from the server
-  const response = await api.get_logs(mtime, localFiles.length);
+  // Fetch the updated list of logs from the server. The names let it notice
+  // moved or renamed logs, which keep the count and mtimes.
+  const response = await api.get_logs(
+    mtime,
+    localFiles.length,
+    localFiles.map((file) => file.name)
+  );
   const updatedLogs = response.files;
   const localFilesByName = new Map(localFiles.map((file) => [file.name, file]));
   const updatedNames = new Set(updatedLogs.map((file) => file.name));

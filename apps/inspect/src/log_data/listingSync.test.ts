@@ -142,6 +142,22 @@ describe("syncListing", () => {
 
     await syncListing(api, target);
 
-    expect(api.get_logs).toHaveBeenCalledWith(25, 2);
+    // the names let the server notice logs that moved (same count and mtimes)
+    expect(api.get_logs).toHaveBeenCalledWith(25, 2, ["a.eval", "b.eval"]);
+  });
+
+  it("moved logs: the old paths are dropped and the new ones fetched", async () => {
+    const local = [handle("a.eval", 10), handle("b.eval", 25)];
+    const server = [handle("a.eval", 10), handle("sub/b.eval", 25)];
+    const { target, applied } = targetWith(local);
+
+    await syncListing(
+      apiWith({ files: server, response_type: "full" }),
+      target
+    );
+
+    expect(applied[0]?.listing).toEqual(server);
+    expect(applied[0]?.deleted).toEqual(["b.eval"]);
+    expect(applied[0]?.invalidated).toEqual(["sub/b.eval"]);
   });
 });

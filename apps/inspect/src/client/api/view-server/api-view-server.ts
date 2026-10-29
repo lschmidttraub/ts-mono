@@ -18,6 +18,7 @@ import { headlineMetric } from "../../../scoring/headline";
 import { fetchPendingSampleDataDirect } from "../../remote/remotePendingSampleData";
 import { normalizeEvalLog } from "../../utils/normalize";
 import { download_file } from "../shared/api-shared";
+import { logNamesDigest } from "../shared/logNamesDigest";
 import {
   Capabilities,
   EditLogResult,
@@ -151,11 +152,15 @@ export function viewServerApi(
     return asResponse<string[]>(result.parsed);
   };
 
-  const get_logs = async (mtime: number, clientFileCount: number) => {
+  const get_logs = async (
+    mtime: number,
+    clientFileCount: number,
+    clientNames?: readonly string[]
+  ) => {
     const path = `/log-files?log_dir=${encodeURIComponent(logDir)}`;
 
     const headers: Record<string, string> = {};
-    const token = log_file_token(mtime, clientFileCount);
+    const token = log_file_token(mtime, clientFileCount, clientNames);
     if (token) {
       headers["If-None-Match"] = token;
     }
@@ -168,10 +173,16 @@ export function viewServerApi(
     return asResponse<LogFilesResponse>(envelope.parsed);
   };
 
-  const log_file_token = (mtime: number, fileCount: number) => {
+  const log_file_token = (
+    mtime: number,
+    fileCount: number,
+    names?: readonly string[]
+  ) => {
     // Use a weak etag as the mtime and file count may not
-    // uniquely identify the state of the log directory
-    return `W/"${mtime}-${fileCount}"`;
+    // uniquely identify the state of the log directory. The names digest
+    // catches moves and renames, which keep both.
+    const digest = names ? `-${logNamesDigest(names)}` : "";
+    return `W/"${mtime}-${fileCount}${digest}"`;
   };
 
   const get_eval_set = async (dir?: string) => {

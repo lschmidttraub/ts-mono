@@ -450,8 +450,11 @@ export const clientApi = (api: LogViewAPI, debug = false): ClientAPI => {
     }),
     get_logs: middleware(
       "get_log_files",
-      (mtime: number, clientFileCount: number) =>
-        api.get_logs(mtime, clientFileCount)
+      (
+        mtime: number,
+        clientFileCount: number,
+        clientNames?: readonly string[]
+      ) => api.get_logs(mtime, clientFileCount, clientNames)
     ),
     get_eval_set: middleware("get_eval_set", (dir?: string) => {
       return api.get_eval_set(dir);
