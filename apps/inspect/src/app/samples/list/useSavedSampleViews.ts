@@ -17,6 +17,9 @@ export interface UseSavedSampleViewsResult {
   /** Save the current filter, columns, sort and layout as `name`,
    *  replacing a view of that name. */
   saveCurrent: (name: string) => void;
+  /** Save the current view with `filter` in place of the current filter,
+   *  and apply it. */
+  saveWithFilter: (name: string, filter: string) => void;
   apply: (view: SavedSampleView) => void;
   remove: (name: string) => void;
 }
@@ -39,6 +42,10 @@ export function useSavedSampleViews(): UseSavedSampleViewsResult {
     views,
     activeView: views.find((v) => isSavedViewActive(v, snapshot)),
     saveCurrent: (name) => saveView(captureSavedView(name, snapshot)),
+    saveWithFilter: (name, nextFilter) => {
+      saveView(captureSavedView(name, { ...snapshot, filter: nextFilter }));
+      setFilter(nextFilter);
+    },
     apply: (saved) => {
       const applied = applySavedView(saved, { view, availableScores });
       patchView(applied.viewPatch);

@@ -1,5 +1,9 @@
 import { describe, expect, test } from "vitest";
 
+import { testSampleSummary } from "../../../client/api/testClientApi";
+import { testSamplesDescriptor } from "../descriptor/testDescriptors";
+import { filterSamples } from "../sample-tools/filters";
+
 import { defaultSamplesView, SamplesViewState } from "./samplesView";
 import {
   applySavedView,
@@ -7,6 +11,7 @@ import {
   isSavedViewActive,
   parseSavedViews,
   SamplesViewSnapshot,
+  selectionFilter,
   upsertSavedView,
 } from "./savedViews";
 
@@ -146,5 +151,60 @@ describe("upsertSavedView", () => {
     const replaced = { ...one, filter: "x" };
     expect(upsertSavedView([one, two], replaced)).toEqual([replaced, two]);
     expect(upsertSavedView([one], two)).toEqual([one, two]);
+  });
+});
+
+describe("selectionFilter", () => {
+  const ids = [
+    "plain",
+    'with "quotes"',
+    "back\\slash",
+    "conflicting:lcbhard_0#0|cheat|none|1",
+    7,
+  ];
+  const oneEpoch = ids.map((id) => testSampleSummary({ id, epoch: 1 }));
+
+  const shown = (
+    filter: string,
+    samples: ReturnType<typeof testSampleSummary>[]
+  ) => {
+    const { result, error } = filterSamples(
+      testSamplesDescriptor({ selectedScorerDescriptor: () => undefined }),
+      samples,
+      filter
+    );
+    expect(error).toBeUndefined();
+    return result.map((s) => [s.id, s.epoch]);
+  };
+
+  test("shows exactly the selected samples, whatever their ids contain", () => {
+    const selected = [ids[1]!, ids[2]!, ids[3]!, ids[4]!].map((id) => ({
+      id,
+      epoch: 1,
+    }));
+    const filter = selectionFilter(selected, new Set([1]));
+    expect(filter.startsWith("id in (")).toBe(true);
+    expect(shown(filter, oneEpoch)).toEqual(selected.map((s) => [s.id, 1]));
+  });
+
+  test("uses == for a single sample", () => {
+    const filter = selectionFilter([{ id: "plain", epoch: 1 }], new Set([1]));
+    expect(filter).toBe('id == "plain"');
+    expect(shown(filter, oneEpoch)).toEqual([["plain", 1]]);
+  });
+
+  test("keeps epochs apart when the log has several", () => {
+    const twoEpochs = [1, 2].flatMap((epoch) =>
+      ["a", "b"].map((id) => testSampleSummary({ id, epoch }))
+    );
+    const selected = [
+      { id: "a", epoch: 2 },
+      { id: "b", epoch: 1 },
+    ];
+    const filter = selectionFilter(selected, new Set([1, 2]));
+    expect(shown(filter, twoEpochs)).toEqual([
+      ["b", 1],
+      ["a", 2],
+    ]);
   });
 });

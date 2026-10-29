@@ -162,3 +162,37 @@ export const upsertSavedView = (
   if (index < 0) return [...views, view];
   return views.map((v, i) => (i === index ? view : v));
 };
+
+// Filter strings take only `\"` and `\\` escapes (filtrex), so JSON.stringify's
+// `\n`-style escapes would not round-trip.
+const filterLiteral = (id: string | number): string =>
+  typeof id === "number"
+    ? String(id)
+    : `"${id.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+
+const idCondition = (ids: readonly (string | number)[]): string =>
+  ids.length === 1
+    ? `id == ${filterLiteral(ids[0]!)}`
+    : `id in (${ids.map(filterLiteral).join(", ")})`;
+
+/**
+ * A filter expression matching exactly the `selected` samples. Ids alone
+ * suffice when the log has one epoch; otherwise each epoch gets its own id
+ * list, so selecting one epoch of a sample doesn't show the others.
+ */
+export const selectionFilter = (
+  selected: readonly { id: string | number; epoch: number }[],
+  logEpochs: ReadonlySet<number>
+): string => {
+  if (logEpochs.size <= 1) {
+    return idCondition([...new Set(selected.map((s) => s.id))]);
+  }
+  const byEpoch = new Map<number, (string | number)[]>();
+  for (const { id, epoch } of selected) {
+    byEpoch.set(epoch, [...(byEpoch.get(epoch) ?? []), id]);
+  }
+  return [...byEpoch]
+    .sort(([a], [b]) => a - b)
+    .map(([epoch, ids]) => `(epoch == ${epoch} and ${idCondition(ids)})`)
+    .join(" or ");
+};

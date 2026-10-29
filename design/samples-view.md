@@ -95,6 +95,7 @@ Users can save the current samples list as a named preset from the View popover 
 - **Storage**: `useSavedViews` ([`state/savedViews.ts`](../apps/inspect/src/state/savedViews.ts)) persists to `localStorage`, like `useUserSettings`, not the app store, whose persistence is host-transient. Entries are validated on rehydrate (`parseSavedViews`).
 - **Apply** (`applySavedView`): columns and sorts the current log lacks are dropped; columns the view doesn't mention keep their visibility and follow its columns. If none of the view's scores exist in the log, the score selection is left alone. Toggles are written with `userOverrides`, as the toggle setters do.
 - **Active view** (`isSavedViewActive`): the View button shows the name of the saved view the list matches, compared over the columns both have.
+- **Selection views**: "Save as view…" in the selection bar saves the current view with a filter matching exactly the checked samples (`selectionFilter`: `id in (...)`, split by epoch when the log has several), so it also applies to other logs that share those sample ids.
 
 ## Test coverage
 

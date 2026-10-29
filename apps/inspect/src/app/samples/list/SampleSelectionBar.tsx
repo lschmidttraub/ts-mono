@@ -16,6 +16,8 @@ import {
   selectedSampleRefs,
 } from "./sampleSelection";
 import styles from "./SampleSelectionBar.module.css";
+import { selectionFilter } from "./savedViews";
+import { useSavedSampleViews } from "./useSavedSampleViews";
 
 interface SampleSelectionBarProps {
   logFile: string;
@@ -29,16 +31,23 @@ interface SavedSubset {
   metricsRecomputed: boolean;
 }
 
+/** The inline name field: a log file to write, or a view to save. */
+interface SelectionForm {
+  kind: "log" | "view";
+  name: string;
+}
+
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
-// The name field appears in response to "Save to log directory…", so it is
-// where the user expects to type next.
+// The name field appears in response to a "Save…" button, so it is where the
+// user expects to type next.
 const focusOnMount = (el: HTMLInputElement | null) => {
   el?.focus();
 };
 
 /** Shown above the samples grid while samples are checked: export them as
- *  a new .eval log, downloaded or saved into the log directory. */
+ *  a new .eval log (downloaded or saved into the log directory), or save a
+ *  view that shows only them. */
 export const SampleSelectionBar: FC<SampleSelectionBarProps> = ({
   logFile,
   samples,
@@ -52,14 +61,27 @@ export const SampleSelectionBar: FC<SampleSelectionBarProps> = ({
     ownedSampleSelection(selection, logFile).keys
   );
 
-  const [fileName, setFileName] = useState<string | undefined>(undefined);
+  const savedViews = useSavedSampleViews();
+  const [form, setForm] = useState<SelectionForm | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
   const [saved, setSaved] = useState<SavedSubset | undefined>(undefined);
+  const [savedView, setSavedView] = useState<string | undefined>(undefined);
 
   if (refs.length === 0) return null;
 
   const defaultName = defaultSubsetFileName(logFile, refs.length);
+
+  const openForm = (kind: SelectionForm["kind"]) => {
+    setError(undefined);
+    setForm({
+      kind,
+      name:
+        kind === "log"
+          ? defaultName
+          : `${refs.length} selected ${refs.length === 1 ? "sample" : "samples"}`,
+    });
+  };
 
   const handleDownload = (): void => {
     if (!api.download_log_subset) return;
@@ -71,9 +93,8 @@ export const SampleSelectionBar: FC<SampleSelectionBarProps> = ({
       .finally(() => setBusy(false));
   };
 
-  const handleSave = (e: FormEvent): void => {
-    e.preventDefault();
-    if (!api.save_log_subset || fileName === undefined) return;
+  const saveToLogDir = (fileName: string): void => {
+    if (!api.save_log_subset) return;
     setBusy(true);
     setError(undefined);
     api
@@ -83,13 +104,31 @@ export const SampleSelectionBar: FC<SampleSelectionBarProps> = ({
           logFile: result.log_file,
           metricsRecomputed: result.metrics_recomputed,
         });
-        setFileName(undefined);
+        setForm(undefined);
         imperativeLogData.invalidateLogListing();
       })
       .catch((e: unknown) => setError(errorText(e)))
       .finally(() => setBusy(false));
   };
 
+  const saveAsView = (name: string): void => {
+    const epochs = new Set(samples.map((s) => s.epoch));
+    savedViews.saveWithFilter(name, selectionFilter(refs, epochs));
+    setSavedView(name);
+    setForm(undefined);
+  };
+
+  const handleSubmit = (e: FormEvent): void => {
+    e.preventDefault();
+    if (!form) return;
+    const name = form.name.trim();
+    if (form.kind === "log") saveToLogDir(name);
+    else saveAsView(name);
+  };
+
+  const replacingView =
+    form?.kind === "view" &&
+    savedViews.views.some((v) => v.name === form.name.trim());
   const savedName = saved?.logFile.split(/[\\/]/).pop();
 
   return (
@@ -101,7 +140,7 @@ export const SampleSelectionBar: FC<SampleSelectionBarProps> = ({
       <span className={styles.count}>
         {refs.length} {refs.length === 1 ? "sample" : "samples"} selected
       </span>
-      {fileName === undefined ? (
+      {form === undefined ? (
         <>
           {api.download_log_subset && (
             <ToolButton
@@ -120,35 +159,46 @@ export const SampleSelectionBar: FC<SampleSelectionBarProps> = ({
               icon="add"
               disabled={busy}
               title="Write the selected samples to a new .eval log next to this one"
-              onClick={() => {
-                setError(undefined);
-                setFileName(defaultName);
-              }}
+              onClick={() => openForm("log")}
             />
           )}
+          <ToolButton
+            className={styles.action}
+            label="Save as view…"
+            icon="filter"
+            disabled={busy}
+            title="Save a view that shows only the selected samples (as an id filter, so it also applies to other logs with these sample ids)"
+            onClick={() => openForm("view")}
+          />
         </>
       ) : (
-        <form className={styles.saveForm} onSubmit={handleSave}>
+        <form className={styles.saveForm} onSubmit={handleSubmit}>
           <input
             type="text"
             className={clsx("form-control", styles.fileName)}
-            aria-label="New log file name"
-            value={fileName}
-            onChange={(e) => setFileName(e.target.value)}
+            aria-label={form.kind === "log" ? "New log file name" : "View name"}
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
             ref={focusOnMount}
           />
           <ToolButton
             className={styles.action}
             type="submit"
-            label="Save"
+            label={
+              form.kind === "log"
+                ? "Save"
+                : replacingView
+                  ? "Replace view"
+                  : "Save view"
+            }
             icon={busy ? "loading" : "confirm"}
-            disabled={busy || fileName.trim() === ""}
+            disabled={busy || form.name.trim() === ""}
           />
           <ToolButton
             className={styles.action}
             label="Cancel"
             disabled={busy}
-            onClick={() => setFileName(undefined)}
+            onClick={() => setForm(undefined)}
           />
         </form>
       )}
@@ -160,6 +210,7 @@ export const SampleSelectionBar: FC<SampleSelectionBarProps> = ({
         disabled={busy}
         onClick={() => {
           setSaved(undefined);
+          setSavedView(undefined);
           clearSampleSelection();
         }}
       />
@@ -172,6 +223,11 @@ export const SampleSelectionBar: FC<SampleSelectionBarProps> = ({
           </Link>
           {!saved.metricsRecomputed &&
             " (metrics could not be recomputed here, so it has no aggregate results)"}
+        </span>
+      )}
+      {savedView && !error && (
+        <span className={styles.saved}>
+          Showing only the selection, saved as view “{savedView}”
         </span>
       )}
     </div>
